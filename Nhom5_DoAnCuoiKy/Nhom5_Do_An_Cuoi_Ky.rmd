@@ -1,0 +1,1035 @@
+---
+title: "Do-An-Cuoi-Ky"
+author: "NguyenTrongDung"
+date: "2023-12-19"
+output:
+  html_document:
+    css: ./lab.css
+    highlight: pygments
+    theme: cerulean
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# 1. Tóm Tắt (abstract)
+
+-   Dựa vào giới thiệu của bộ dữ liệu trên kaggle chúng em biết được bộ
+    dữ liệu được thu thập từ Bob - người đã thành lập công ty di động
+    của riêng mình. Anh ấy muốn cạnh tranh với các công ty lớn như
+    Apple, Samsung, v.v. nhưng lại không biết cách ước tính giá điện
+    thoại di động mà công ty anh ấy tạo ra. Để giải quyết vấn đề này,
+    anh thu thập dữ liệu bán hàng điện thoại di động của nhiều công ty
+    khác nhau. Người chủ doanh nghiệp này muốn tìm hiểu mối liên hệ giữa
+    các tính năng của điện thoại di động (ví dụ: - RAM, Bộ nhớ trong,
+    v.v.) và giá bán của nó.
+-   Với cùng xuất phát điểm giải quyết và xử lý dữ liệu đó, nhóm chúng
+    em quyết định chọn sử dụng phương pháp phân tích khám phá dữ liệu (
+    EDA ) để hiểu rõ hơn về dữ liệu, sử dụng Multiple Linear Regression,
+    Decision Tree, Random Forest, SVM, K Mean Clustering để xây dựng các
+    mô hình để từ đó có thể ứng dụng nó để dự đoán tầm giá từ các tính
+    năng của điện thoại.
+
+# 2. Giới Thiệu (introduction)
+
+-   Để có thể dự đoán phạm vi giá cho biết mức giá của điện thoại cao
+    như thế nào, chúng ta phải tìm hiểu độ tương quan của biến
+    price_range với các tính năng của điện thoại, kết hợp sử dụng các mô
+    hình dự báo trong học máy thống kê machine learning. Bài làm dưới
+    đây, sẽ áp xây dựng các mô hình học máy: Multiple Linear Regression,
+    Decision Tree, Support Vector Machine, Random Forest và K Mean
+    Clustering để lựa chọn ra mô hình dự báo tốt nhất nhằm dự báo mức
+    giá cho điện thoại.
+
+# 3. Dữ liệu (data)
+
+-   Nguồn: [Mobile Price
+    Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification?fbclid=IwAR1CVbtylNUcvMWwx6rQ55P_z_A4QbigGiMPxl5N0n_rwTEz4_iQS8n7soM){.uri}
+
+-   Tập dữ liệu train.csv này có 2000 dòng dữ liệu với 21 cột thuộc
+    tính, gồm có:
+
+1.  battery_power: Tổng năng lượng mà pin có thể lưu trữ trong một thời
+    gian tính bằng mAh.
+
+2.  blue: Có chức năng bluetooth hay không.
+
+3.  clock_speed: tốc độ mà bộ vi xử lý thực hiện các lệnh.
+
+4.  dual_sim: có hỗ trợ sim kép hay không.
+
+5.  fc: mega pixels của camera trước.
+
+6.  four_g: có hỗ trợ 4G hay không.
+
+7.  int_memory: dung lượng bộ nhớ trong tính bằng Gigabytes.
+
+8.  m_dept: độ sâu của điện thoại tính bằng cm.
+
+9.  mobile_wt: trọng lượng của điện thoại.
+
+10. n_cores: số lõi của bộ xử lý.
+
+11. pc: mega pixels của camera chính.
+
+12. px_height: độ phân giải pixel của chiều cao điện thoại.
+
+13. px_width: độ phân giải pixel của chiều rộng điện thoại.
+
+14. ram: bộ nhớ truy cập ngẫu nhiên tính bằng Mega Byte.
+
+15. sc_h: chiều cao màn hình của điện thoại tính bằng cm.
+
+16. sc_w: chiều rộng màn hình của điện thoại tính bằng cm.
+
+17. talk_time: thời gian sử dụng dài nhất sau một lần sạc đầy
+
+18. three_g: có hỗ trợ 3G hay không.
+
+19. touch_screen: có hỗ trợ màn hình cảm ứng hay không.
+
+20. wifi: có hỗ trợ chức năng wifi hay không.
+
+21. price_range: Đây là biến mục tiêu với giá trị 0(chi phí thấp), 1(chi
+    phí trung bình), 2(chi phí cao) và 3(chi phí rất cao).
+
+## 3.1. Các thư viện cần sử dụng
+
+```{r load-packages, message=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(reshape)
+library(mice)
+library(fastDummies)
+library(dplyr)
+library(data.table)
+library(caret)
+library(caTools)
+library(car)
+
+library(rpart)
+library(rpart.plot)
+library(ggpubr)
+library(corrplot)
+library(viridis)
+
+library(caret) 
+library(e1071) 
+library(ROCR)
+library(randomForest)
+library(tidyverse)
+library(readxl)
+library(cluster)
+library(NbClust)
+library(factoextra)
+```
+
+## 3.2. Đọc file dữ liệu từ file train.csv
+
+```{r, results = TRUE}
+data <- read.csv("./train.csv", header = TRUE)
+
+```
+
+## 3.3. Xem một số hàng dũ liệu đầu và cuối của tập dữ liệu
+
+```{r}
+head(data)
+
+tail(data)
+```
+
+## 3.4. Xem cấu trúc của tập dữ liệu
+
+```{r}
+str(data)
+```
+
+## 3.5. Xem số hàng và số cột của tập dữ liệu
+
+```{r}
+dim(data)
+```
+
+## 3.6. Hiển thị thông tin tổng quan về dữ liệu
+
+```{r}
+summary(data)
+```
+
+## 3.7. Kiểm tra xem có các dòng dữ liệu nào rỗng (null) hay không
+
+```{r}
+miss_rate<-function(){
+  for(i in 1:ncol(data))
+    print( paste(
+      colnames(data[i]), 
+      mean(is.na(unlist(data[,i])) | unlist(data[,i]) == ''),
+      sep=':'))
+}
+
+miss_rate()
+```
+
+**Nhận xét:** - Như vậy, tập dữ liệu train.csv là hoàn hảo, không có
+chứa các giá trị null nào.
+
+# 4. EDA và Trực quan hóa dữ liệu (data visulization)
+
+## 4.1. Số lượng các giá trị duy nhất ở các cột của tệp dữ liệu
+
+```{r}
+unique_value_counts <- sapply(data, function(x) length(unique(x)))
+
+result_df <- data.frame(Column = names(unique_value_counts), Number_of_unique_values = unique_value_counts)
+
+print(result_df)
+```
+
+**Nhận xét:**
+
+-   Nhìn vào kết quả trên, có thể phân loại các cột thuộc tính thành 2
+    loại:
+
+1.  Các thuộc tính mang giá trị phân loại: blue, dual_sim, four_g,
+    n_cores, three_g, touch_screen, wifi.
+
+2.  Các thuộc tính mang giá trị liên tục: battery_power, clock_speed,
+    fc, int_memory, m_dep, mobile_wt, pc, px_height, px_width, ram,
+    sc_h, sc_w, talk_time.
+
+## 4.2. Biểu đồ tròn cho các biến phân loại
+
+```{r}
+# Chọn các biến phân loại
+categorical_columns <- c('blue', 'dual_sim', 'four_g', 'n_cores', 'three_g', 'touch_screen', 'wifi')
+
+# Hàm phân tích đơn biến cho biến phân loại
+categorical_univariate_analysis <- function(variable) {
+  df <- data.frame(value = data[[variable]])
+  
+  # Biểu đồ pie chart
+  pie_chart <- ggplot(df, aes(x = "", fill = factor(value))) +
+    geom_bar(width = 1, position = "fill") +
+    coord_polar(theta = "y") +
+    geom_text(aes(label = scales::percent(..count../sum(..count..))),
+              stat = "count",
+              position = position_fill(vjust = 0.5),
+              color = "black",
+              size = 3) +
+    labs(title = paste("Pie Chart for", variable),
+         x = NULL,
+         y = NULL) +
+    theme_minimal() +
+    theme(axis.text = element_blank(),
+          axis.title = element_blank(),
+          panel.grid = element_blank())
+  
+  print(pie_chart)
+}
+
+# Áp dụng hàm cho từng biến phân loại
+for (variable in categorical_columns) {
+  categorical_univariate_analysis(variable)
+}
+```
+
+**Nhận xét:**
+
+-   Đa số các biến phân loại có số lượng mẫu đồng đều.
+
+-   Trừ chức năng hỗ trợ 3G thì số lượng điện thoại có chức năng này
+    chiếm đến 76%
+
+## 4.3. Số lượng mẫu cho mỗi giá trị trong cột price_range
+
+```{r}
+frequency_table <- table(data$price_range)
+
+# Tạo DataFrame từ kết quả
+frequency_df <- data.frame(labels = names(frequency_table), sizes = as.numeric(frequency_table))
+
+# Biểu đồ tròn (Pie chart) với hiển thị giá trị
+pie_plot <- ggplot(frequency_df, aes(x = "", y = sizes, fill = labels)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  scale_fill_manual(values = c("green", "pink", "magenta", "cyan")) +
+  theme_void() +
+  ggtitle("COSTS (Pie Chart)") +
+  geom_text(aes(label = sizes), position = position_stack(vjust = 0.5))  # Hiển thị giá trị
+
+# Biểu đồ cột (Bar chart)
+bar_plot <- ggplot(frequency_df, aes(x = labels, y = sizes, fill = labels)) +
+  geom_bar(stat = "identity", color = "white") +
+  scale_fill_manual(values = c("green", "pink", "magenta", "cyan")) +
+  ggtitle("COSTS (Bar Chart)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggarrange(pie_plot, bar_plot, nrow = 1, ncol = 2)
+```
+
+**Nhận xét:**
+
+-   Trong tập dữ liệu, số lượng điện thoại trong các mức giá có sự phân
+    bố đồng đều với nhau ( bằng 500 )
+
+## 4.4. Mối tương quan giữa các đặc trưng
+
+```{r}
+# num_features chứa tên của các đặc trưng trong tập dữ liệu
+num_features <- c("battery_power", "blue", "clock_speed", "dual_sim", "fc", "four_g", "int_memory", "m_dep", "mobile_wt", "n_cores", "pc", "px_height", "px_width", "ram", "sc_h", "sc_w", "talk_time", "three_g", "touch_screen", "wifi", "price_range")
+
+
+# Tính ma trận tương quan
+correlation_matrix <- cor(data[num_features])
+
+# Sử dụng thư viện corrplot để tạo heatmap
+corrplot(correlation_matrix, method = "color", type = "full", tl.col = "black", tl.srt = 45)
+```
+
+**Nhận xét:**
+
+-   px_width và px_height có mối quan hệ tương đối cao.
+-   sc_w và sc_h có mối quan hệ tương đối.
+-   pc và fc có mối quan hệ tương đối.
+-   những máy có 4G thì sẽ có 3G
+-   ram máy càng cao thì giá càng cao
+
+```{r}
+# Tính ma trận tương quan
+correlation_matrix <- cor(data[num_features])
+
+# Trích xuất tương quan của mỗi đặc trưng với 'price_range'
+price_corr <- correlation_matrix["price_range", ]
+
+# Sắp xếp tương quan theo giá trị tuyệt đối giảm dần
+sorted_price_corr <- sort(abs(price_corr), decreasing = TRUE)
+
+barplot(sorted_price_corr, col = 'skyblue', main = "Tương quan giữa các đặc trưng và Price Range", cex.names = 0.8, las = 2)
+```
+
+**Nhận xét:**
+
+\- Biểu đồ cho thấy mối quan hệ mạnh mẽ giữa giá trị "price_range" và
+thuộc tính "ram". Dữ liệu cho thấy dung lượng bộ nhớ truy cập ngẫu nhiên
+càng cao, thì mức giá của điện thoại càng tăng. Ngoài ra, các thuộc tính
+"battery_power", "px_height", "px_width" cũng có mối quan hệ với
+"price_range". Chúng ta sẽ sử dụng các thuộc tính này khi xây dựng mô
+hình để dự đoán "price_range".
+
+## 4.5. Sự phân phối giá của ram theo price_range
+
+```{r}
+# Tạo biểu đồ histogram bằng ggplot2
+ggplot(data, aes(x = ram, fill = as.factor(price_range))) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.7) +
+  facet_wrap(~price_range, scales = "free_y") +
+  labs(x = "RAM", y = "Count") +
+  theme_minimal()
+```
+
+**Nhận xét:**
+
+-   ram càng cao thì mức giá của điện thoại càng cao, chẳng hạn với các
+    điện thoại có giá ở mức 3 (chi phí rất cao) thì dung lượng ram tập
+    trung vào khoảng trên 3500 MegaBytes.
+
+## 4.6. Phân phối của các đặc trưng
+
+```{r}
+num_features02 <- c("battery_power", "clock_speed", "fc", "int_memory", "m_dep", "mobile_wt", "n_cores", "pc", "px_height", "px_width", "ram", "sc_h", "sc_w", "talk_time", "price_range")
+
+# Thiết lập bảng đồ đa panel
+n_rows <- 4
+n_cols <- 5
+par(mfrow=c(n_rows, n_cols), mar=c(4, 4, 2, 1), oma=c(1, 1, 2, 1)) 
+
+#khúc này chọn màu
+colors <- viridis(15)
+
+# Lặp qua từng đặc trưng số và vẽ biểu đồ histogram với màu sắc tương tự
+for (i in 1:length(num_features02)) {
+  hist(data[[num_features02[i]]], main=num_features02[i], col=colors[i], xlab=num_features02[i])
+}
+
+# Đặt tiêu đề cho toàn bảng đồ
+title <- "Phân phối đặc trưng"
+mtext(title, outer=TRUE, line=0.5, cex=1.2)
+
+# Đặt kích thước biểu đồ và kết thúc
+par(mfrow=c(1, 1), mar=c(5, 4, 4, 2) + 0.1)
+```
+
+**Nhận xét:** - Có một số đặc trưng có sự phân bố lệch như: fc,
+px_height, sc_w khi giá trị phân phối giảm dần đều. - Ngược lại,có một
+số trưng có phân phối đồng đều như: battery_power, int_memory, ram, ...
+
+## 4.7. Kernel Density Estimate (KDE) cho phân phối của các đặc trưng
+
+```{r}
+long_data <- reshape2::melt(data, id.vars = "price_range", measure.vars = num_features02)
+
+ggplot(long_data, aes(x = value, fill = factor(price_range))) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~variable, scales = "free") +
+  labs(title = "Phân phối đặc trưng với Price Range") +
+  theme_minimal()
+```
+
+**Nhận xét:**
+
+-   Khi đồ thị KDE cho RAM được vẽ, có thể thấy rằng có sự phân biệt lớn
+    giữa các phân phối xác suất của RAM cho từng phạm vi giá. Điều này
+    có nghĩa rằng giá trị của RAM đóng vai trò quan trọng trong việc xác
+    định giá của điện thoại
+
+## 4.8. price_range với 4 thuộc tính có mối quan hệ tương quan cao
+
+```{r}
+# chuyển đổi dữ liệu sang định dạng long
+long_data <- reshape2::melt(data, id.vars = "price_range", measure.vars = "battery_power")
+
+# Vẽ boxplot
+ggplot(long_data, aes(x = factor(price_range), y = value, fill = factor(price_range))) +
+  geom_boxplot() +
+  labs(x = "Price Range", y = "Battery Power", title = "Battery Power vs Price Range", fontface = "bold") +
+  theme_minimal()
+
+ggplot(data, aes(x = factor(price_range), y = ram, fill = factor(price_range))) +
+  geom_boxplot() +
+  labs(title = "Boxplot for RAM with Price Range") +
+  ylab("RAM") +
+  xlab("Price Range") +
+  theme_minimal()
+
+ggplot(data, aes(x = factor(price_range), y = px_width, fill = factor(price_range))) +
+  geom_boxplot() +
+  labs(title = "Boxplot for Pixel Width with Price Range") +
+  ylab("Pixel Width") +
+  xlab("Price Range") +
+  theme_minimal()
+
+ggplot(data, aes(x = factor(price_range), y = px_height, fill = factor(price_range))) +
+  geom_boxplot() +
+  labs(title = "Boxplot for Pixel Height with Price Range") +
+  ylab("Pixel Height") +
+  xlab("Price Range") +
+  theme_minimal()
+```
+
+**Nhận xét:**
+
+-   Nhìn chung, có nhiều điện thoại dù có kích thước lớn nhưng bộ nhớ hoặc dung lượng điện thoại thấp thì giá vẫn không cao.
+
+
+## 4.9. price_range và các thuộc tính tương quan
+
+```{r}
+## price_range với ram và battery_power
+ggplot(data, aes(x = ram, y = battery_power, color = factor(price_range))) +
+  geom_point() +
+  labs(title = "price_range with ram and battery_power") +
+  theme_minimal()
+
+## price_range với ram và px_width
+ggplot(data, aes(x = ram, y = px_width, color = factor(price_range))) +
+  geom_point() +
+  labs(title = "price_range with ram and px_width") +
+  theme_minimal()
+
+## price_range với ram và px_height
+ggplot(data, aes(x = ram, y = px_height, color = factor(price_range))) +
+  geom_point() +
+  labs(title = "price_range with ram and px_height") +
+  theme_minimal()
+
+## price_range với px_width và px_height
+ggplot(data, aes(x = px_width, y = px_height, color = factor(price_range))) +
+  geom_point() +
+  labs(title = "price_range with px_width and px_height") +
+  theme_minimal()
+```
+
+**Nhận xét:**
+
+# 5. Mô hình hóa dữ liệu (data modeling)
+
+## 5.1. Mô hình Hồi Quy Tuyến Tính Đa Biến (Multiple Linear Regression)
+
+### 5.1.1. Tạo dataframe chứa các biến đặc trưng có ý nghĩa thống kê mạnh: battery_power, px_height, px_width, ram.
+
+```{r}
+mlrm_features <- c("battery_power", "px_height", "px_width", "ram")
+mlrm_target <- "price_range"
+
+mlrm_df <- data[c(mlrm_features, mlrm_target)]
+```
+
+### 5.1.2. Chia tập dữ liệu thành 2 tập: train và test theo tỉ lệ 2:1
+
+```{r}
+library(caTools)
+set.seed(123)
+split = sample.split(mlrm_df$price_range, SplitRatio = 2/3)
+```
+
+```{r}
+mlrm_df_train = subset(mlrm_df, split == TRUE)
+mlrm_df_test = subset(mlrm_df, split == FALSE)
+```
+
+### 5.1.3. Xây dựng mô hình từ tập train đã chia
+
+```{r}
+mlrm_train = lm(mlrm_df_train$price_range ~ ., data = mlrm_df_train)
+```
+
+```{r}
+summary(mlrm_train)
+```
+
+```{r, message=FALSE}
+library(car)
+crPlots(mlrm_train)
+```
+
+### 5.1.4. R-squared của mô hình
+
+```{r}
+# dự báo giá trị của price_range trong bộ mẫu xây dựng, sử dụng hàm predict
+predict_train = predict(mlrm_train, mlrm_df_train)
+
+# tổng phương sai của mô hình dự báo
+sum_variance_DuBao_train = sum((mlrm_df_train$price_range - predict_train)^2)
+
+# tổng phương sai của dữ liệu ban đầu
+sum_variance_DuLieuBanDau_train = sum((mean(mlrm_df_train$price_range) - predict_train)^2)
+```
+
+```{r}
+R2_mlrm_train = 1 - (sum_variance_DuBao_train/sum_variance_DuLieuBanDau_train)
+R2_mlrm_train
+```
+
+### 5.1.5. Thực hiện kiểm tra trên tập test
+
+```{r}
+predict_test = predict(mlrm_train, mlrm_df_test)
+
+sum_variance_DuBao_test = sum((mlrm_df_test$price_range - predict_test)^2)
+
+sum_variance_DuLieuBanDau_test = sum((mean(mlrm_df_test$price_range) - predict_test)^2)
+
+R2_mlrm_test = 1 - (sum_variance_DuBao_test/sum_variance_DuLieuBanDau_test)
+cat("R2_mlrm_test:", R2_mlrm_test, "\n")
+
+# Tính RMSE
+RMSE_mlrm_test <- sqrt(sum((mlrm_df_test$price_range - predict_test)^2) / nrow(mlrm_df_test))
+
+# In giá trị RMSE
+cat("RMSE_mlrm_test:", RMSE_mlrm_test, "\n")
+
+```
+
+**Nhận xét:**
+
+-   Như vậy, với R-Squared khoảng 0.906 tức mô hình có thể dự đoán được
+    chính xác khoảng 90% cho price_range hay RMSE của mô hình là khoảng
+    0.327 tức sự chênh lệch giữa giá trị price_range dự đoán được và
+    price_range thực tế có sự chênh lệch giá trị khoảng 0.327 đơn vị.
+
+=\> Mô hình có sự chính xác cao.
+
+## 5.2. Mô hình Cây Hồi Quy (Regression Tree)
+
+```{r}
+# Lựa chọn đặc trưng và mục tiêu
+rt_features <- c("battery_power", "px_height", "px_width", "ram")
+rt_target <- "price_range"
+```
+
+```{r}
+# Tạo dataframe mới chỉ chứa các cột được chọn
+rt_df<- data[c(rt_features, rt_target)]
+```
+
+### 5.2.1. Chia dữ liệu thành huấn luyện và kiểm tra. 80% dành cho đào tạo, 20% dành cho kiểm tra.
+
+```{r}
+train_indices <- createDataPartition(rt_df$price_range, p = 0.8, list = FALSE)
+train_data <- rt_df[train_indices, ]
+test_data <- rt_df[-train_indices, ]
+```
+
+### 5.2.2. Xây dựng mô hình Decission Tree
+
+```{r}
+Regression_tree <- rpart(formula = as.formula(paste(rt_target, "~ .")), data = train_data)
+```
+
+### 5.2.3. Hiển thị cây
+
+```{r}
+rpart.plot(Regression_tree)
+
+print(Regression_tree)
+```
+
+### 5.2.4. Dự đoán trên tập kiểm thử
+
+```{r}
+predictions <- predict(Regression_tree, newdata = test_data)
+```
+
+### 5.2.5. Tính R-Squared và RMSE
+
+```{r}
+# Tính R^2
+r_squared <- 1 - sum((test_data$price_range - predictions)^2) / sum((test_data$price_range - mean(test_data$price_range))^2)
+cat("R-squared:", round(r_squared, 4), "\n")
+
+# Đánh giá hiệu suất ( RMSE)
+rmse_RT <- sqrt(mean((predictions - test_data$price_range)^2))
+print(paste("Root Mean Squared Error (RMSE):", rmse_RT))
+
+mae_RT <- mean(abs(predictions - test_data$price_range))
+print(paste("Mean Absolute Error (MAE):", mae_RT))
+```
+
+**Nhận xét:**
+
+-   Với R-Squared khoảng 0.819 và RMSE khoảng 0.475 thì mô hình
+    Regression Tree có độ chính xác khá cao.
+
+## 5.3. Mô hình Cây Phân Loại (Classification Tree)
+
+### 5.3.1. Xây dựng mô hình
+
+```{r}
+Classification_tree <- rpart(price_range~ ., data = train_data, method = "class")
+
+rpart.plot(Classification_tree, extra = 100)
+Classification_tree
+
+Classification_tree$confusion
+```
+
+### 5.3.2. Dự đoán trên tập kiểm tra
+
+```{r}
+prediction <- predict(Classification_tree, newdata = test_data, type = "class")
+```
+
+### 5.3.3. Tính độ chính xác khi phân loại
+
+```{r}
+# Hiển thị confusion matrix
+conf_matrix <- table(prediction, test_data$price_range)
+print(conf_matrix)
+
+# Hiển thị tỉ lệ phân loại đúng trên tập kiểm tra
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", accuracy))
+```
+
+**Nhận xét:**
+
+-   Mô hình Classification Tree cho ra độ chính xác phân loại như trên
+    là tốt.
+
+## 5.4. Mô hình SVM
+
+```{r}
+Final_df <- data
+```
+
+======================SVM=========================================
+
+```{r}
+# Split into X and y
+X <- Final_df[c('ram', 'n_cores', 'clock_speed')]
+y <- Final_df$price_range
+
+# Split into training and testing sets
+set.seed(42)
+index <- createDataPartition(y, p = 0.7, list = FALSE)
+X_train <- X[index, ]
+y_train <- y[index]
+X_test <- X[-index, ]
+y_test <- y[-index]
+
+svm_model <- svm(X_train, y_train, kernel = "radial", type = "C", class.factor = 4)
+
+# Predict on test set
+y_pred <- predict(svm_model, X_test)
+
+# Evaluate the model
+conf_matrix <- table(y_pred, y_test)
+accuracy_SVM <- sum(diag(conf_matrix)) / sum(conf_matrix)
+
+# Display the results
+print("Confusion Matrix:")
+print(conf_matrix)
+print(paste("Accuracy:", accuracy_SVM))
+```
+
+## 5.5. Mô hình Random Forest
+
+```{r}
+data$price_range <- as.factor(data$price_range)
+str(data$price_range)
+```
+
+### 5.5.1. Chia dữ liệu thành huấn luyện và kiểm tra. 80% dành cho đào tạo, 20% dành cho kiểm tra.
+
+```{r}
+set.seed(123)
+samp <- sample(nrow(data), 0.8 * nrow(data))
+train <- data[samp, ]
+test <- data[-samp, ]
+```
+
+### 5.5.2. Kiểm tra kích thước của tập dữ liệu huấn luyện và kiểm tra:
+
+```{r}
+dim(test) 
+```
+
+### 5.5.3. Xây dựng mô hình rừng ngẫu nhiên
+
+```{r}
+model_RandomForest <- randomForest(price_range ~ . - price_range, data = train, ntree = 1000, mtry = 7)
+model_RandomForest
+
+```
+
+### 5.5.4. Xác thực mô hình bằng cách sử dụng dữ liệu thử nghiệm
+
+```{r}
+prediction_RF <- predict(model_RandomForest, newdata = test)
+table(prediction_RF, test$price_range)
+prediction_RF
+```
+
+### 5.5.5. Hiển thị giá trị dự đoán so với giá trị thực tế
+
+```{r}
+results_RF<-cbind(prediction_RF,test$price_range)
+
+results_RF
+
+colnames(results_RF)<-c('pred','real')
+
+results_RF<-as.data.frame(results_RF)
+
+results_RF
+```
+
+### 5.5.6. Tính độ chính xác của mô hình
+
+```{r}
+accuracy_RF = sum(prediction_RF==test$price_range) / nrow(test) # The output is as shown below
+accuracy_RF
+
+```
+
+## 5.6. K MEANS CLUSTERING
+
+### 5.6.1. Standardize continuous variables
+
+```{r}
+dataKMean <- as.data.frame(data)
+dataKMean_final <- dataKMean %>% select(ram, battery_power
+) %>% scale()
+```
+
+### 5.6.2. Use Eblow determine "k"
+
+```{r}
+wcss <- numeric()
+
+for (i in 1:10) {
+  kmeans.out <- kmeans(dataKMean_final, centers=i, nstart = 20)  
+  wcss[i] <- kmeans.out$tot.withinss
+}
+print(wcss)
+plot(1:10, wcss, type="b", xlab = "number of clusters", ylab = "Within groups sum of squares")
+```
+
+### 5.6.3. Create cluster
+
+```{r}
+# Create cluster
+clusters <- kmeans(dataKMean_final, centers =  3, iter.max = 100, nstart = 100)
+
+# Visualize clusters using factoextra
+#fviz_cluster(clusters, data = data2)
+fviz_cluster(clusters, data = dataKMean_final, geom = "rect", show.clust.cent = FALSE)
+
+```
+
+### 5.6.4. visualize clusters using original variables
+
+```{r}
+dataKMean <- dataKMean |> mutate(cluster = clusters$cluster)
+dataKMean |> ggplot(aes(x = price_range, y = ram
+, col = as.factor(cluster))) + geom_point()
+```
+```{r}
+# Nạp thư viện
+library(plotly)
+
+# Tạo dữ liệu mẫu
+x <- data$ram
+y <- data$price_range
+z <- data$battery_power
+
+
+# Tạo biểu đồ scatterplot 3D
+plot_ly(x = x, y = y, z = z, type = "scatter3d", mode = "markers", marker = list(color = clusters$cluster)) %>%
+  layout(scene = list(aspectmode = "auto"))
+
+# Hiển thị biểu đồ
+
+
+```
+
+
+# 6. Thực nghiệm, kết quả và thảo luận
+
+## 6.1. So sánh và chọn ra Model tốt nhất cho dự báo
+
+### 6.1.1. So sánh các mô hình phân loại
+
+```{r}
+# Tạo dữ liệu
+data_accuracy <- data.frame(
+  Model = c("Classification Tree", "Random Forest", "SVM"),
+  Values = c(accuracy, accuracy_RF, accuracy_SVM)
+)
+
+# Vẽ biểu đồ cột
+ggplot(data_accuracy, aes(x = Model, y = Values, fill = Model)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  labs(title = "Compare accuracy between models",
+       x = "Model",
+       y = "Accuracy") +
+  theme_minimal()
+
+
+```
+
+### 6.1.2. So sánh các mô hình hồi quy
+
+```{r}
+# Tạo dữ liệu
+data_RMSE <- data.frame( Model = c("Multiple Linear Regression",
+"Regression Tree"), Values = c(RMSE_mlrm_test, rmse_RT) )
+
+# Vẽ biểu đồ cột
+ggplot(data_RMSE, aes(x = Model, y = Values, fill = Model)) +
+geom_bar(stat = "identity", width = 0.5) + labs(title = "Compare RMSE
+between Models", x = "Model", y = "RMSE") + theme_minimal()
+```
+
+## 6.2. Thực ngiệm
+
+```{r}
+data2 = read.csv("./test.csv", head =TRUE)
+
+prediction_RF_test_csv <- predict(model_RandomForest, newdata = data2)
+```
+
+```{r}
+prediction_RF_test_csv
+```
+
+# 7. Kết luận (Conclusion)
+
+-   Như vậy, model Random Forest cho ra các kết quả phân loại mức giá
+    tiền điện thoại là tốt nhất trong số 5 mô hình đã xây dựng.
+
+# 8. Phụ lục (Appendices)
+
+## Accuracy:
+
+-   Accuracy chỉ đơn giản đánh giá mô hình thường xuyên dự đoán đúng đến
+    mức nào. Độ chính xác là tỉ lệ giữa số điểm dữ liệu được dự đoán
+    đúng và tổng số điểm dữ liệu.
+
+## Confusion Matrix:
+
+-   Confusion matrix là một ma trận thể hiện số lượng điểm dữ liệu thuộc
+    vào một class và được dự đoán thuộc vào class.
+
+-   Confusion matrix cung cấp thêm thông tin về tỷ lệ phân lớp đúng giữa
+    các lớp, hay giúp phát hiện các lớp có tỉ lệ phân lớp nhầm cao nhờ
+    vào các khái niệm True (False) Positive (Negative).
+
+## Precision and Recall
+
+-   Precision trả lời cho câu hỏi: trong số các điểm dữ liệu được mô
+    hình phân loại vào lớp Positive, có bao nhiêu điểm dữ liệu thực sự
+    thuộc về lớp Positive. Mặt khác, Recall giúp chúng ta biết được có
+    bao nhiêu điểm dữ liệu thực sự ở lớp Positive được mô hình phân lớp
+    đúng trong mọi điểm dữ liệu thực sự ở lớp Positive.
+
+## F1-Score
+
+-   Một mô hình tốt khi cả Precision và Recall đều cao, thể hiện cho mô
+    hình ít phân loại nhầm giữa các lớp cũng như tỉ lệ bỏ sót các đối
+    tượng thuộc lớp cần quan tâm là thấp. Tuy nhiên, hai giá trị
+    Precision và Recall thường không cân bằng với nhau (giá trị này tăng
+    thì giá trị kia thường có xu hướng giảm). Để đánh giá cùng lúc cả
+    Precision và Recall, ta sử dụng độ đo F-Score
+
+## MAE
+
+-   là độ đo để đánh giá các mô hình hồi quy. MAE được định nghĩa là
+    trung bình tổng trị tuyệt đối sai số giữa đầu ra dự đoán và kết quả
+    thực
+
+## MSE
+
+-   Mean Squared Error (MSE) là độ đo để đánh giá các mô hình hồi quy.
+    MSE được định nghĩa là trung bình tổng bình phương sai số giữa đầu
+    ra dự đoán và kết quả thực
+
+## RMSE
+
+-   Root Mean Squared Error (RMSE) cũng là độ đo để đánh giá các mô hình
+    hồi quy. RMSE được định nghĩa là căn bậc 2 trung bình tổng bình
+    phương sai số giữa đầu ra dự đoán và kết quả thực.
+
+## R\^2 (R-Squared)
+
+-   Một thước đo cho chúng ta biết tỷ lệ phương sai trong biến phản hồi
+    của mô hình hồi quy có thể được giải thích bằng các biến dự đoán.
+    Giá trị này nằm trong khoảng từ 0 đến 1. Giá trị R2 càng cao, mô
+    hình càng phù hợp với tập dữ liệu.
+
+# 9. Đóng góp (Contributions)
+
+-   Nguyễn Trọng Dũng: EDA và Trực quan hóa dữ liệu, Simple Linear
+    Regression, Random Forest.
+
+-   Đỗ Ngọc Hân: EDA và Trực quan hóa dữ liệu, SVM, K Mean Clustering.
+
+-   Trần Thị Ngọc Trang: EDA và Trực quan hóa dữ liệu, Decision Tree.
+
+# 10. Tham khảo (References)
+
+## 10.1. Tài liệu
+
+-   Michael J. Crawley, The R Book - Second Edition,
+    <http://www.bio.ic.ac.uk/research/mjcraw/therbook/index.htm>
+
+-   Sarah Stowell, Using R for Statistics
+
+-   W. N. Venables, D. M. Smith and the R Core Team, An Introduction to
+    R
+
+-   ABHISHEK SHARMA, Mobile Price Classification - Dataset Notebooks,
+    <https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification/code>
+
+## 10.2. Code
+
+-   Wickham et al. ggplot2, <https://ggplot2.tidyverse.org/>
+
+-   Wickham et al. Tidyverse, <https://www.tidyverse.org/>
+
+-   Wickham et al. dplyr, <https://dplyr.tidyverse.org/>
+
+-   Buuren et al. Package 'mice',
+    <https://cran.r-project.org/web/packages/mice/mice.pdf>
+
+-   Kaplan. Package 'fastDummies',
+    <https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf>
+
+-   Kuhn. The caret Package, March 27, 2019,
+    <https://topepo.github.io/caret/>
+
+-   Jarek Tuszynski, caTools,
+    <https://cran.r-project.org/web/packages/caTools/index.html>
+
+-   John Fox et al. carcar,
+    <https://cran.r-project.org/web/packages/car/index.html>
+
+-   Terry Therneau et al. rpart,
+    <https://cran.r-project.org/package=rpart>
+
+-   Alboukadel Kassambara ggpubr, <https://rpkgs.datanovia.com/ggpubr/>
+
+-   Michael Hahsler et al. corrplot,
+    <https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html>
+
+-   Simon Garnier et al. viridis,
+    <https://cran.r-project.org/web/packages/viridis/index.html>
+
+-   David Meyer et al. e1071,
+    <https://cran.r-project.org/web/packages/e1071/index.html>
+
+-   Tobias Sing et al. ROCR,
+    <https://cran.r-project.org/web/packages/ROCR/index.html>
+
+# 11. Peer Assign
+
+## Nguyễn Trọng Dũng
+
+-   Đỗ Ngọc Hân:
+
+-   Công việc: EDA và Trực quan hóa dữ liệu, SVM, K Mean Clustering.
+
+-   Mức độ hoàn thành: 100%.
+
+-   Điểm: 10.
+
+-   Trần Thị Ngọc Trang:
+
+-   Công việc: EDA và Trực quan hóa dữ liệu, Decision Tree.
+
+-   Mức độ hoàn thành: 100%.
+
+-   Điểm: 10.
+
+## Đỗ Ngọc Hân
+
+-   Nguyễn Trọng Dũng:
+
+-   Công việc: EDA và Trực quan hóa dữ liệu, Simple Linear Regression,
+    Random Forest.
+
+-   Mức độ hoàn thành: 100%.
+
+-   Điểm: 10.
+
+-   Trần Thị Ngọc Trang:
+
+-   Công việc: EDA và Trực quan hóa dữ liệu, Decision Tree.
+
+-   Mức độ hoàn thành: 100%.
+
+-   Điểm: 10.
+
+## Trần Thị Ngọc Trang
+
+-   Nguyễn Trọng Dũng:
+
+-   Công việc: EDA và Trực quan hóa dữ liệu, Simple Linear Regression,
+    Random Forest.
+
+-   Mức độ hoàn thành: 100%.
+
+-   Điểm: 10.
+
+-   Đỗ Ngọc Hân:
+
+-   Công việc: EDA và Trực quan hóa dữ liệu, SVM, K Mean Clustering.
+
+-   Mức độ hoàn thành: 100%.
+
+-   Điểm: 10.
+
